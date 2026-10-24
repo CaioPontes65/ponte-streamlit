@@ -24,6 +24,9 @@ TEMPO_LIMITE_MS = 60_000
 FALHA_RAPIDA_EM_SEGUNDOS = 5
 TENTATIVAS_APOS_FALHA_RAPIDA = 3
 TAMANHO_MAXIMO_DO_RELATO = 4_000
+# Classificar o relato e copiar trechos não pede raciocínio longo; no nível padrão
+# o modelo passava do tempo limite até em relatos de uma linha.
+NIVEL_DE_RACIOCINIO = "minimal"
 NAO_INFORMADO = "nao_informado"
 
 INSTRUCOES = """Você organiza o relato de um estudante em fatos que ele vai conferir depois.
@@ -37,8 +40,8 @@ Regras:
 5. Crie um item em "eventos" para cada situação descrita no relato: falecimento de quem sustentava a família, alagação, incêndio, outro evento ou chegada de outra cidade para estudar. Separe situações diferentes, como um incêndio antigo e uma alagação recente, e não misture data ou saída de uma com outra. Crie no máximo um item por situação e não repita a mesma situação com outro trecho. Frases sobre como a pessoa está ou se sente, sobre graduação, trabalho, renda ou benefícios não são situações.
 6. Em "situacao", use "falecimento" quando morreu o provedor principal da renda da família; "evento_adverso" para alagação, incêndio ou outro evento que atingiu a moradia; "ingressante" quando a pessoa diz que é ingressante, caloura ou que acabou de entrar na universidade vindo de outro estado ou de município do Acre de difícil acesso; "outra" para outra situação inesperada.
 7. "acontecimento" só vale para "evento_adverso". Nas demais situações, use "nao_informado".
-8. Em "data", preencha "valor" no formato AAAA-MM-DD somente se o relato trouxer dia, mês e ano. Para expressões como "semana passada" ou "ontem", deixe "valor" vazio e copie a expressão em "trecho".
-9. "saiu_da_residencia" é "sim" somente se o relato disser que a pessoa precisou sair da própria residência. Alagação no bairro ou na cidade não basta.
+8. Em "data", preencha "valor" no formato AAAA-MM-DD somente se o relato trouxer dia, mês e ano. Para expressões como "semana passada" ou "ontem", deixe "valor" vazio e copie a expressão em "trecho". Se o relato não diz quando a situação aconteceu, deixe "valor" e "trecho" vazios.
+9. "saiu_da_residencia" é "sim" somente se o relato disser que a pessoa precisou sair da própria residência por causa de um acontecimento. Alagação no bairro ou na cidade não basta, e mudar de cidade para estudar também não conta.
 10. "pensao_pelo_falecimento" trata de pensão recebida por causa da morte do provedor. Não confunda com pensão alimentícia.
 11. "parentes_rb_czs" é "sim" ou "nao" somente se o relato disser se a pessoa tem parentes em Rio Branco ou em Cruzeiro do Sul.
 12. "outra_graduacao" é "sim" se o relato disser que a pessoa tem matrícula em outra faculdade ou universidade ou já tem diploma de curso superior, e "nao" se disser que esta é a primeira graduação.
@@ -154,6 +157,7 @@ def _chamar_modelo(relato: str, cliente: genai.Client, modelo: str) -> str:
         response_mime_type="application/json",
         response_json_schema=ESQUEMA,
         temperature=0,
+        thinking_config=types.ThinkingConfig(thinking_level=NIVEL_DE_RACIOCINIO),
     )
     for tentativa in range(1, TENTATIVAS_APOS_FALHA_RAPIDA + 1):
         inicio = time.perf_counter()
