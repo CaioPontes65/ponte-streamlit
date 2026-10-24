@@ -27,6 +27,10 @@ EDITAIS = [
 
 HOJE = date(2026, 10, 24)  # data de cenário fixa do protótipo React
 
+def preparar_edital_guiado() -> None:
+    # Callback: roda antes do rádio de navegação ser criado, quando a chave 'visao' ainda pode mudar.
+    st.session_state.visao='Preparar edital UFAC 01/2026'; st.session_state.etapa=0
+
 def pagina_catalogo() -> None:
     st.subheader('Encontre editais de bolsas e auxílios')
     st.caption('Catálogo de demonstração atualizado a partir do PonteFront. Somente o edital UFAC 01/2026 está associado a fontes oficiais e possui orientação guiada; os demais registros são fictícios.')
@@ -55,8 +59,7 @@ def pagina_catalogo() -> None:
             if e.get('real'):
                 st.success('Edital com fonte oficial vinculada e fluxo guiado disponível.')
                 st.link_button('Abrir página oficial do edital',e['url'])
-                if st.button('Preparar para este edital',key='preparar_'+e['id'],type='primary'):
-                    st.session_state.visao='Preparar edital UFAC 01/2026'; st.session_state.etapa=0; st.rerun()
+                st.button('Preparar para este edital',key='preparar_'+e['id'],type='primary',on_click=preparar_edital_guiado)
             else:
                 st.warning('Exemplo fictício do protótipo. Não use as informações como edital vigente ou orientação de inscrição.')
     st.info('Preparação geral por perguntas para outros editais ainda não foi portada nesta versão Streamlit; não apresentamos seus itens como recomendações confirmadas.')
