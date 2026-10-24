@@ -8,6 +8,7 @@ Esta pasta contém uma adaptação Streamlit do catálogo e do fluxo guiado da P
 - Fluxo guiado em quatro etapas para o Edital Proaes nº 01/2026 da UFAC.
 - Entrada por relato com chamada real ao Gemma 4 pela Gemini API.
 - Alternativa por perguntas diretas quando não houver chave ou quando a API falhar.
+- Perguntas extraídas dos anexos do edital, agrupadas por seção: as três situações do Anexo VI (falecimento do provedor, saída da residência, ingressante de outra localidade) e as declarações dos Anexos II, III, IV, V e VIII. O Gemma preenche esses campos a partir do relato. Quando há um único acontecimento, as sugestões são aplicadas direto, e a conferência lista as perguntas que faltaram responder, sem mostrar as seções de outras situações emergenciais.
 - Sugestões com trechos de origem, confirmação e edição de fatos.
 - Recalculo das orientações após alterações e resumo copiável/baixável.
 - Trechos e links das fontes oficiais do edital.

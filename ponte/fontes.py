@@ -102,6 +102,16 @@ _TRECHOS = (
         ),
     ),
     Trecho(
+        chave="2.2.a",
+        rotulo="Item 2.2, alínea a",
+        documento="edital",
+        pagina=2,
+        texto=(
+            "Falecimento recente do provedor principal pela renda familiar, desde "
+            "que o estudante e/ou o grupo familiar não estejam recebendo pensão;"
+        ),
+    ),
+    Trecho(
         chave="2.2.b",
         rotulo="Item 2.2, alínea b",
         documento="edital",
@@ -109,6 +119,18 @@ _TRECHOS = (
         texto=(
             "Estudante obrigado a sair da própria residência em virtude da "
             "ocorrência de alagação, incêndio ou outro evento adverso;"
+        ),
+    ),
+    Trecho(
+        chave="2.2.c",
+        rotulo="Item 2.2, alínea c",
+        documento="edital",
+        pagina=2,
+        texto=(
+            "Estudantes ingressantes, oriundos de outro Estado da Federação ou de "
+            "municípios do Acre de difícil acesso, que não possui parentes nos "
+            "municípios de Rio Branco e Cruzeiro do Sul e nem condições financeiras "
+            "para o custeio de moradia."
         ),
     ),
     Trecho(
@@ -138,6 +160,27 @@ _TRECHOS = (
             "o auxílio pode ser solicitado em até 90 dias da ocorrência do "
             "evento adverso."
         ),
+    ),
+    Trecho(
+        chave="4.2",
+        rotulo="Item 4.2",
+        documento="edital",
+        pagina=2,
+        texto="Estar cursando a primeira graduação (Anexo IV);",
+    ),
+    Trecho(
+        chave="4.3",
+        rotulo="Item 4.3",
+        documento="edital",
+        pagina=2,
+        texto="Não estar cursando outra graduação em Instituição de Ensino Superior (Anexo IV);",
+    ),
+    Trecho(
+        chave="4.5",
+        rotulo="Item 4.5",
+        documento="edital",
+        pagina=2,
+        texto="Estar em alguma das situações descritas no item 2.2 deste Edital;",
     ),
     Trecho(
         chave="5.3",
@@ -191,6 +234,18 @@ _TRECHOS = (
         ),
     ),
     Trecho(
+        chave="8.2",
+        rotulo="Item 8.2",
+        documento="edital",
+        pagina=4,
+        texto=(
+            "Documentação acadêmica (apenas do estudante): a) Declaração de que não "
+            "possui matrícula em outra instituição de ensino superior, bem como não "
+            "é portador de diploma de nível superior (com data atualizada), "
+            "preenchida e assinada pelo estudante (Anexo IV)."
+        ),
+    ),
+    Trecho(
         chave="8.3",
         rotulo="Item 8.3",
         documento="edital",
@@ -232,6 +287,130 @@ _TRECHOS = (
         ),
     ),
     Trecho(
+        chave="8.5",
+        rotulo="Item 8.5",
+        documento="edital",
+        pagina=4,
+        texto=(
+            "Documentação de comprovação de Renda (do estudante e de todos os "
+            "membros do grupo familiar maiores de 18 anos):"
+        ),
+    ),
+    Trecho(
+        chave="8.5.1",
+        rotulo="Item 8.5.1",
+        documento="edital",
+        pagina=4,
+        texto=(
+            "Grupo familiar com Benefício Social do Programa Bolsa Família: a) Cópia "
+            "da Folha Resumo do Cadastro Único atualizada disponível em: "
+            "https://cadunico.dataprev.gov.br/#/consultaSimples ; b) Último extrato "
+            "de recebimento do benefício; c) Declaração de beneficiário do Bolsa "
+            "Família (substituindo todas as outras documentações de renda) conforme "
+            "Anexo VIII."
+        ),
+        observacao="A alínea c está na página 5.",
+    ),
+    Trecho(
+        chave="8.5.1.1",
+        rotulo="Item 8.5.1.1",
+        documento="edital",
+        pagina=5,
+        texto=(
+            "O estudante deverá fazer parte do grupo familiar constante na Folha "
+            "Resumo do Cadúnico apresentada na inscrição. Em caso de divergência, a "
+            "inscrição será indeferida e no recurso deverá ser incluída todas as "
+            "demais documentações de comprovação de renda de todo o grupo familiar, "
+            "constante no item 8.5."
+        ),
+    ),
+    Trecho(
+        chave="8.5.4",
+        rotulo="Item 8.5.4, alínea a",
+        documento="edital",
+        pagina=5,
+        texto=(
+            "Em caso de Trabalhador autônomo e/ou informal: a) Declaração de "
+            "trabalho autônomo e/ou informal (com data atualizada) informando "
+            "atividade exercida e a renda média mensal (com assinatura por extenso, "
+            "manuscrita e igual ao documento identidade apresentado), conforme "
+            "Anexo III;"
+        ),
+        observacao=(
+            "As alíneas b a d, nas páginas 5 e 6, tratam de Carteira de Trabalho "
+            "Digital, extratos bancários dos três últimos meses e de quem não "
+            "possui conta bancária."
+        ),
+    ),
+    Trecho(
+        chave="8.5.5",
+        rotulo="Item 8.5.5, alínea a",
+        documento="edital",
+        pagina=6,
+        texto=(
+            "Em caso de desemprego: a) Declaração de desemprego (com data "
+            "atualizada), conforme Anexo II (com assinatura por extenso, manuscrita "
+            "e conforme documentação oficial);"
+        ),
+        observacao=(
+            "As alíneas b a e tratam de Carteira de Trabalho Digital, extratos "
+            "bancários dos três últimos meses e de quem não possui conta bancária."
+        ),
+    ),
+    Trecho(
+        chave="8.5.7.b",
+        rotulo="Item 8.5.7, alínea b",
+        documento="edital",
+        pagina=6,
+        texto=(
+            "Em caso de recebimento de pensão alimentícia, apresentar termo de "
+            "audiência ou declaração assinada, onde conste o valor da pensão "
+            "recebida. Caso receba ou não pensão alimentícia, apresentar declaração "
+            "de pensão alimentícia (ANEXO V);"
+        ),
+        observacao="O texto começa na página 6 e termina na página 7.",
+    ),
+    Trecho(
+        chave="anexo-ii.declaracao",
+        rotulo="Anexo II, declaração de desemprego",
+        documento="anexos",
+        pagina=2,
+        texto="estou desempregado (a) no momento e meu sustento tem sido proveniente de:",
+    ),
+    Trecho(
+        chave="anexo-iii.observacao",
+        rotulo="Anexo III, observação",
+        documento="anexos",
+        pagina=3,
+        texto=(
+            "Observação: não serão aceitas declarações que não contenha as "
+            "informações solicitadas com o valor da renda média e a atividade "
+            "exercida e sem as devidas assinaturas."
+        ),
+    ),
+    Trecho(
+        chave="anexo-iv.declaracao",
+        rotulo="Anexo IV, declaração",
+        documento="anexos",
+        pagina=4,
+        texto=(
+            "não possuo vínculo acadêmico com outra instituição de ensino superior, "
+            "bem como não sou portador (a) de diploma de Nível Superior."
+        ),
+    ),
+    Trecho(
+        chave="anexo-v.opcoes",
+        rotulo="Anexo V, opções de declaração",
+        documento="anexos",
+        pagina=5,
+        texto=(
+            "RECEBO ( ) o valor mensal de R$ ____ referente à pensão "
+            "alimentícia/auxílio financeiro em meu nome ou em nome de dependentes. "
+            "NÃO RECEBO ( ) nenhum valor mensal referente à pensão "
+            "alimentícia/auxílio financeiro em meu nome ou em nome de dependentes."
+        ),
+    ),
+    Trecho(
         chave="anexo-vi.cabecalho",
         rotulo="Anexo VI, cabeçalho",
         documento="anexos",
@@ -243,6 +422,35 @@ _TRECHOS = (
         ),
     ),
     Trecho(
+        chave="anexo-vi.falecimento",
+        rotulo="Anexo VI, opção de falecimento",
+        documento="anexos",
+        pagina=6,
+        texto=(
+            "Falecimento recente do provedor principal pela renda familiar, desde "
+            "que o estudante e/ou o grupo familiar não estejam recebendo pensão;"
+        ),
+    ),
+    Trecho(
+        chave="anexo-vi.ingressante",
+        rotulo="Anexo VI, opção de ingressante",
+        documento="anexos",
+        pagina=6,
+        texto=(
+            "Estudante ingressantes, oriundo de outro Estado da Federação ou de "
+            "municípios do Acre de difícil acesso, que não possui parentes nos "
+            "municípios de Rio Branco e Cruzeiro do Sul e nem condições financeiras "
+            "para o custeio de moradia."
+        ),
+    ),
+    Trecho(
+        chave="anexo-vi.obito",
+        rotulo="Anexo VI, comprovantes de falecimento",
+        documento="anexos",
+        pagina=6,
+        texto="Certidão de óbito e comprovante que não vai receber pensão;",
+    ),
+    Trecho(
         chave="anexo-vi.alagacao",
         rotulo="Anexo VI, documentos comprobatórios",
         documento="anexos",
@@ -252,6 +460,23 @@ _TRECHOS = (
             "órgãos estaduais e/ou municipais, fotos da residência nessa situação, "
             "entre outros;"
         ),
+    ),
+    Trecho(
+        chave="anexo-vi.outra-localidade",
+        rotulo="Anexo VI, comprovantes de outra localidade",
+        documento="anexos",
+        pagina=6,
+        texto=(
+            "Para quem vem de outra localidade: fatura de energia da residência de "
+            "origem e outros documentos que sejam relevantes."
+        ),
+    ),
+    Trecho(
+        chave="anexo-vi.outros",
+        rotulo="Anexo VI, outros comprovantes",
+        documento="anexos",
+        pagina=6,
+        texto="Outros: Quais?",
     ),
     Trecho(
         chave="anexo-vii.opcao",
@@ -267,6 +492,17 @@ _TRECHOS = (
             "É a única opção marcável do formulário e descreve quem já recebeu "
             "benefício. O item 6.9 indica o Anexo VII também para a situação da "
             "alínea (b), que pode não corresponder a essa opção."
+        ),
+    ),
+    Trecho(
+        chave="anexo-viii.declaracao",
+        rotulo="Anexo VIII, declaração",
+        documento="anexos",
+        pagina=8,
+        texto=(
+            "declaro, sob as penas a lei, ser beneficiário do Programa de "
+            "transferência direta do governo federal - Bolsa Família e este "
+            "benefício, representa a principal fonte de renda do meu grupo familiar."
         ),
     ),
 )

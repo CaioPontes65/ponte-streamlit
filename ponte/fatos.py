@@ -36,11 +36,19 @@ class Origem(StrEnum):
     SISTEMA = "sistema"
 
 
+SECAO_SITUACAO = "Situação emergencial (item 2.2 e Anexo VI)"
+SECAO_FALECIMENTO = "Se houve falecimento do provedor principal"
+SECAO_EVENTO_ADVERSO = "Se houve alagação, incêndio ou outro evento adverso"
+SECAO_INGRESSANTE = "Se você é ingressante vindo de outra localidade"
+SECAO_DOCUMENTACAO = "Documentação e declarações (item 8 e anexos)"
+
+
 @dataclass(frozen=True)
 class Campo:
     chave: str
     pergunta: str
     rotulo: str
+    secao: str
     tipo: str = "escolha"
     opcoes: dict[str, str] | None = None
     extraivel: bool = True
@@ -54,55 +62,126 @@ CAMPOS: dict[str, Campo] = {
             chave="aconteceu_com_voce",
             pergunta="A situação relatada aconteceu com você?",
             rotulo="Aconteceu com você",
+            secao=SECAO_SITUACAO,
             opcoes={"sim": "Sim", "outra_pessoa": "Não, aconteceu com outra pessoa", NAO_SEI: "Não sei"},
         ),
         Campo(
-            chave="acontecimento",
-            pergunta="Qual acontecimento você quer analisar?",
-            rotulo="Acontecimento",
-            opcoes={"alagacao": "Alagação", "incendio": "Incêndio", "outro": "Outro evento", NAO_SEI: "Não sei"},
-        ),
-        Campo(
-            chave="descricao_acontecimento",
-            pergunta="Descreva o acontecimento em poucas palavras",
-            rotulo="Descrição do acontecimento",
-            tipo="texto",
-        ),
-        Campo(
-            chave="saiu_da_residencia",
-            pergunta="Você precisou sair da sua própria residência por causa desse acontecimento?",
-            rotulo="Saída da própria residência",
-            opcoes=SIM_NAO,
+            chave="situacao_emergencial",
+            pergunta="Qual situação do Anexo VI (Justificativa do Auxílio Emergencial) descreve o seu caso?",
+            rotulo="Situação emergencial",
+            secao=SECAO_SITUACAO,
+            opcoes={
+                "falecimento": "Falecimento recente do provedor principal da renda familiar",
+                "evento_adverso": "Alagação, incêndio ou outro evento adverso",
+                "ingressante": "Ingressante vindo de outro estado ou de município do Acre de difícil acesso",
+                "outra": "Outra situação inesperada",
+                NAO_SEI: "Não sei",
+            },
         ),
         Campo(
             chave="data_evento",
             pergunta="Data do acontecimento",
             rotulo="Data do acontecimento",
+            secao=SECAO_SITUACAO,
             tipo="data",
         ),
         Campo(
             chave="data_referencia",
             pergunta="Data de referência para esta consulta",
             rotulo="Data de referência",
+            secao=SECAO_SITUACAO,
             tipo="data",
             extraivel=False,
+        ),
+        Campo(
+            chave="pensao_pelo_falecimento",
+            pergunta="Após o falecimento, você ou seu grupo familiar está recebendo pensão?",
+            rotulo="Pensão após o falecimento",
+            secao=SECAO_FALECIMENTO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="acontecimento",
+            pergunta="Qual acontecimento você quer analisar?",
+            rotulo="Acontecimento",
+            secao=SECAO_EVENTO_ADVERSO,
+            opcoes={"alagacao": "Alagação", "incendio": "Incêndio", "outro": "Outro evento", NAO_SEI: "Não sei"},
+        ),
+        Campo(
+            chave="descricao_acontecimento",
+            pergunta="Descreva o acontecimento em poucas palavras",
+            rotulo="Descrição do acontecimento",
+            secao=SECAO_EVENTO_ADVERSO,
+            tipo="texto",
+        ),
+        Campo(
+            chave="saiu_da_residencia",
+            pergunta="Você precisou sair da sua própria residência por causa desse acontecimento?",
+            rotulo="Saída da própria residência",
+            secao=SECAO_EVENTO_ADVERSO,
+            opcoes=SIM_NAO,
         ),
         Campo(
             chave="perdeu_documentos",
             pergunta="Você perdeu documentos pessoais?",
             rotulo="Perda de documentos pessoais",
+            secao=SECAO_EVENTO_ADVERSO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="parentes_rb_czs",
+            pergunta="Você tem parentes em Rio Branco ou em Cruzeiro do Sul?",
+            rotulo="Parentes em Rio Branco ou Cruzeiro do Sul",
+            secao=SECAO_INGRESSANTE,
             opcoes=SIM_NAO,
         ),
         Campo(
             chave="dificuldade_moradia",
             pergunta="Você tem dificuldade para apresentar comprovante de moradia ou contrato?",
             rotulo="Dificuldade com comprovante de moradia",
+            secao=SECAO_DOCUMENTACAO,
             opcoes={**SIM_NAO, "nao_quero_informar": "Não quero informar"},
+        ),
+        Campo(
+            chave="outra_graduacao",
+            pergunta="Você tem matrícula em outra instituição de ensino superior ou diploma de nível superior?",
+            rotulo="Outra graduação ou diploma de nível superior",
+            secao=SECAO_DOCUMENTACAO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="desemprego_no_grupo",
+            pergunta="Você ou alguém do seu grupo familiar maior de 18 anos está desempregado?",
+            rotulo="Desemprego no grupo familiar",
+            secao=SECAO_DOCUMENTACAO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="autonomo_no_grupo",
+            pergunta="Você ou alguém do seu grupo familiar maior de 18 anos trabalha como autônomo ou informal?",
+            rotulo="Trabalho autônomo ou informal no grupo familiar",
+            secao=SECAO_DOCUMENTACAO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="pensao_alimenticia",
+            pergunta="Você ou alguém do seu grupo familiar recebe pensão alimentícia?",
+            rotulo="Pensão alimentícia",
+            secao=SECAO_DOCUMENTACAO,
+            opcoes=SIM_NAO,
+        ),
+        Campo(
+            chave="bolsa_familia",
+            pergunta="Seu grupo familiar recebe Bolsa Família?",
+            rotulo="Bolsa Família no grupo familiar",
+            secao=SECAO_DOCUMENTACAO,
+            opcoes=SIM_NAO,
         ),
         Campo(
             chave="beneficio_anterior",
             pergunta="Você recebeu bolsa ou auxílio da assistência estudantil da Ufac nos últimos 3 anos?",
             rotulo="Benefício anterior mencionado",
+            secao=SECAO_DOCUMENTACAO,
             opcoes=SIM_NAO,
             so_do_relato=True,
         ),

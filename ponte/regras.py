@@ -14,12 +14,21 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import StrEnum
 
-from ponte.fatos import CAMPOS, Caso
+from ponte.fatos import (
+    CAMPOS,
+    NAO_SEI,
+    SECAO_EVENTO_ADVERSO,
+    SECAO_FALECIMENTO,
+    SECAO_INGRESSANTE,
+    Caso,
+    Estado,
+)
 
 LIMITE = (
-    "Este plano consulta apenas orientações sobre saída da residência por alagação, "
-    "incêndio ou outro evento adverso e perda de documentos pessoais. Outros requisitos "
-    "do edital não foram avaliados. A análise do pedido é da Proaes."
+    "Este plano detalha orientações sobre saída da residência por alagação, incêndio ou "
+    "outro evento adverso e perda de documentos pessoais, indica o Anexo VI para as demais "
+    "situações do item 2.2 e relaciona as declarações dos anexos às suas respostas. Outros "
+    "requisitos do edital não foram avaliados. A análise do pedido é da Proaes."
 )
 JANELA_EM_DIAS = 90
 ACONTECIMENTOS_NOMEADOS = {"alagacao": "alagação", "incendio": "incêndio"}
@@ -139,17 +148,73 @@ def ler_situacao(caso: Caso) -> Situacao:
     )
 
 
+def situacao_emergencial(caso: Caso, incluir_sugestoes: bool = False) -> str | None:
+    """Situação do item 2.2 informada; responder sobre o acontecimento indica a alínea b.
+
+    Com incluir_sugestoes, considera também valores do relato ainda não conferidos.
+    Serve só para escolher quais perguntas mostrar, nunca para orientar.
+    """
+
+    def valor(chave: str) -> object | None:
+        fato = caso.fatos[chave]
+        if incluir_sugestoes and fato.estado is Estado.A_CONFERIR and fato.valor != NAO_SEI:
+            return fato.valor
+        return caso.valor(chave)
+
+    informada = valor("situacao_emergencial")
+    if informada is not None:
+        return informada
+    if valor("acontecimento") is not None:
+        return "evento_adverso"
+    return None
+
+
+SECAO_DA_SITUACAO = {
+    "falecimento": SECAO_FALECIMENTO,
+    "evento_adverso": SECAO_EVENTO_ADVERSO,
+    "ingressante": SECAO_INGRESSANTE,
+}
+
+
+def secoes_de_outras_situacoes(caso: Caso) -> set[str]:
+    """Seções condicionais que não correspondem à situação informada ou sugerida; vazio se ela é desconhecida."""
+    alinea = situacao_emergencial(caso, incluir_sugestoes=True)
+    if alinea is None:
+        return set()
+    return set(SECAO_DA_SITUACAO.values()) - {SECAO_DA_SITUACAO.get(alinea)}
+
+
+def campos_sem_resposta(caso: Caso) -> list[str]:
+    """Perguntas que ainda faltam responder, sem as seções de outras situações."""
+    ignoradas = secoes_de_outras_situacoes(caso)
+    return [
+        chave
+        for chave, campo in CAMPOS.items()
+        if caso.fatos[chave].estado is Estado.SEM_RESPOSTA
+        and campo.secao not in ignoradas
+        and not campo.so_do_relato
+        and campo.tipo != "texto"
+    ]
+
+
 def gerar_plano(caso: Caso) -> Plano:
     situacao = ler_situacao(caso)
+    alinea = situacao_emergencial(caso)
     if caso.valor("aconteceu_com_voce") == "outra_pessoa":
         orientacoes = [
             *_item_6_9(caso, situacao),
             *_fora_do_recorte(situacao),
             *_item_6_8(caso),
-            *_item_6_10(caso),
         ]
+    elif alinea == "falecimento":
+        orientacoes = [*_janela(caso, situacao), *_alinea_a(caso), *_moradia(caso, situacao), *_item_6_8(caso)]
+    elif alinea == "ingressante":
+        orientacoes = [*_alinea_c(caso), *_moradia(caso, situacao), *_item_6_8(caso)]
+    elif alinea == "outra":
+        orientacoes = [*_janela(caso, situacao), *_situacao_excepcional(), *_moradia(caso, situacao), *_item_6_8(caso)]
     else:
         orientacoes = [
+            *_situacao_a_esclarecer(caso, alinea),
             *_perguntas_factuais(caso, situacao),
             *_janela(caso, situacao),
             *_item_6_9(caso, situacao),
@@ -157,9 +222,32 @@ def gerar_plano(caso: Caso) -> Plano:
             *_moradia(caso, situacao),
             *_item_6_8(caso),
             *_fora_do_recorte(situacao),
-            *_item_6_10(caso),
         ]
+    orientacoes += [*_declaracoes_dos_anexos(caso), *_item_6_10(caso)]
     return Plano(tuple(orientacoes))
+
+
+def _situacao_a_esclarecer(caso: Caso, alinea: str | None) -> list[Orientacao]:
+    if alinea is not None:
+        return []
+    return [
+        Orientacao(
+            chave="esclarecer.situacao_emergencial",
+            tipo=Tipo.ESCLARECER,
+            titulo="Informe qual situação do item 2.2 descreve o seu caso",
+            instrucao=_com_nota(
+                "O Anexo VI pede para marcar uma situação: falecimento recente do provedor principal "
+                "da renda familiar, saída da própria residência por alagação, incêndio ou outro evento "
+                "adverso, ou estudante ingressante vindo de outro estado ou de município do Acre de "
+                "difícil acesso.",
+                caso,
+                "situacao_emergencial",
+            ),
+            motivo="O item 4.5 pede que o estudante esteja em alguma das situações do item 2.2.",
+            fontes=("4.5", "anexo-vi.falecimento", "2.2.b", "anexo-vi.ingressante"),
+            depende_de=("situacao_emergencial", "acontecimento"),
+        )
+    ]
 
 
 def _perguntas_factuais(caso: Caso, situacao: Situacao) -> list[Orientacao]:
@@ -333,17 +421,7 @@ def _item_6_9(caso: Caso, situacao: Situacao) -> list[Orientacao]:
             pendencia="A única opção do formulário descreve quem recebeu bolsas ou auxílios nos "
             "últimos 3 anos. Veja a pergunta sugerida para a Proaes.",
         ),
-        Orientacao(
-            chave="proaes.versao-anexo-vi",
-            tipo=Tipo.PERGUNTA_PROAES,
-            titulo="Pergunte qual versão do Anexo VI usar",
-            instrucao="Pergunta sugerida: “O Anexo VI publicado na página do Edital 01/2026 tem no "
-            "cabeçalho ‘Justificativa do Auxílio Emergencial 2025 - Edital 02/2025’. Devo usar esse "
-            "formulário?”",
-            motivo="O cabeçalho cita outro ano e outro edital. A Ponte não conclui que o formulário seja inválido.",
-            fontes=("anexo-vi.cabecalho", "6.9"),
-            depende_de=FATOS_DO_RAMO,
-        ),
+        _versao_do_anexo_vi(("anexo-vi.cabecalho", "6.9"), FATOS_DO_RAMO),
     ]
     if caso.valor("beneficio_anterior") != "sim":
         orientacoes.append(
@@ -361,6 +439,159 @@ def _item_6_9(caso: Caso, situacao: Situacao) -> list[Orientacao]:
             )
         )
     return orientacoes
+
+
+def _versao_do_anexo_vi(fontes: tuple[str, ...], depende_de: tuple[str, ...]) -> Orientacao:
+    return Orientacao(
+        chave="proaes.versao-anexo-vi",
+        tipo=Tipo.PERGUNTA_PROAES,
+        titulo="Pergunte qual versão do Anexo VI usar",
+        instrucao="Pergunta sugerida: “O Anexo VI publicado na página do Edital 01/2026 tem no "
+        "cabeçalho ‘Justificativa do Auxílio Emergencial 2025 - Edital 02/2025’. Devo usar esse "
+        "formulário?”",
+        motivo="O cabeçalho cita outro ano e outro edital. A Ponte não conclui que o formulário seja inválido.",
+        fontes=fontes,
+        depende_de=depende_de,
+    )
+
+
+def _alinea_a(caso: Caso) -> list[Orientacao]:
+    pensao = caso.valor("pensao_pelo_falecimento")
+    condicao = (
+        "A alínea a do item 2.2 trata do falecimento recente do provedor principal pela renda "
+        "familiar, desde que o estudante e/ou o grupo familiar não estejam recebendo pensão."
+    )
+    if pensao is None:
+        return [
+            Orientacao(
+                chave="esclarecer.pensao_pelo_falecimento",
+                tipo=Tipo.ESCLARECER,
+                titulo="Informe se há pensão após o falecimento",
+                instrucao=_com_nota(
+                    "Responda se você ou seu grupo familiar está recebendo pensão após o falecimento.",
+                    caso,
+                    "pensao_pelo_falecimento",
+                ),
+                motivo=condicao,
+                fontes=("2.2.a",),
+                depende_de=("pensao_pelo_falecimento",),
+            )
+        ]
+    if pensao == "sim":
+        return [
+            Orientacao(
+                chave="fora-do-recorte",
+                tipo=Tipo.NAO_AVALIADO,
+                titulo="Este recorte não cobre essa combinação de informações",
+                instrucao=f"{condicao} Você informou que há pensão.",
+                motivo="Isso não significa ausência de direito ou de outra alternativa. O item 2.2.1 "
+                "prevê que outras situações excepcionais podem ser analisadas pela Comissão de Seleção "
+                "da Proaes.",
+                fontes=("2.2.a", "2.2.1"),
+                depende_de=("situacao_emergencial", "pensao_pelo_falecimento"),
+            )
+        ]
+    depende_de = ("situacao_emergencial", "pensao_pelo_falecimento")
+    return [
+        Orientacao(
+            chave="anexo-vi.falecimento",
+            tipo=Tipo.PASSO,
+            titulo="Consulte a Justificativa do Auxílio Emergencial (Anexo VI)",
+            instrucao="No Anexo VI, a primeira opção é o falecimento recente do provedor principal pela "
+            "renda familiar. O item 8.3 cita como comprovantes a certidão de óbito e o comprovante de "
+            "que não vai receber pensão.",
+            motivo="Você informou o falecimento recente do provedor principal e que não há pensão.",
+            fontes=("2.2.a", "8.3", "anexo-vi.falecimento", "anexo-vi.obito"),
+            depende_de=depende_de,
+            pendencia="A Ponte não avalia se o falecimento é recente nem se os comprovantes serão aceitos.",
+        ),
+        _versao_do_anexo_vi(("anexo-vi.cabecalho", "8.3"), depende_de),
+    ]
+
+
+def _alinea_c(caso: Caso) -> list[Orientacao]:
+    parentes = caso.valor("parentes_rb_czs")
+    condicao = (
+        "A alínea c do item 2.2 trata de estudantes ingressantes, vindos de outro estado ou de "
+        "municípios do Acre de difícil acesso, sem parentes em Rio Branco e Cruzeiro do Sul e sem "
+        "condições financeiras para o custeio de moradia."
+    )
+    if parentes is None:
+        return [
+            Orientacao(
+                chave="esclarecer.parentes_rb_czs",
+                tipo=Tipo.ESCLARECER,
+                titulo="Informe se tem parentes em Rio Branco ou Cruzeiro do Sul",
+                instrucao=_com_nota(
+                    "Responda se você tem parentes em Rio Branco ou em Cruzeiro do Sul.",
+                    caso,
+                    "parentes_rb_czs",
+                ),
+                motivo=condicao,
+                fontes=("2.2.c",),
+                depende_de=("parentes_rb_czs",),
+            )
+        ]
+    if parentes == "sim":
+        return [
+            Orientacao(
+                chave="fora-do-recorte",
+                tipo=Tipo.NAO_AVALIADO,
+                titulo="Este recorte não cobre essa combinação de informações",
+                instrucao=f"{condicao} Você informou que tem parentes nessas cidades.",
+                motivo="Isso não significa ausência de direito ou de outra alternativa. O item 2.2.1 "
+                "prevê que outras situações excepcionais podem ser analisadas pela Comissão de Seleção "
+                "da Proaes.",
+                fontes=("2.2.c", "2.2.1"),
+                depende_de=("situacao_emergencial", "parentes_rb_czs"),
+            )
+        ]
+    depende_de = ("situacao_emergencial", "parentes_rb_czs")
+    return [
+        Orientacao(
+            chave="anexo-vi.ingressante",
+            tipo=Tipo.PASSO,
+            titulo="Consulte a Justificativa do Auxílio Emergencial (Anexo VI)",
+            instrucao="No Anexo VI, a terceira opção é a do estudante ingressante vindo de outra "
+            "localidade. O item 8.3 cita como comprovantes a fatura de energia da residência de origem "
+            "e outros documentos que sejam relevantes.",
+            motivo="Você informou que é ingressante vindo de outra localidade e que não tem parentes em "
+            "Rio Branco ou Cruzeiro do Sul.",
+            fontes=("2.2.c", "8.3", "anexo-vi.ingressante", "anexo-vi.outra-localidade"),
+            depende_de=depende_de,
+            pendencia="A alínea c também menciona não ter condições financeiras para o custeio de "
+            "moradia. A Ponte não avalia esse ponto, nem como o prazo de 90 dias do item 2.2.2 se "
+            "aplica a ingressantes.",
+        ),
+        _versao_do_anexo_vi(("anexo-vi.cabecalho", "8.3"), depende_de),
+    ]
+
+
+def _situacao_excepcional() -> list[Orientacao]:
+    return [
+        Orientacao(
+            chave="2.2.1",
+            tipo=Tipo.NAO_AVALIADO,
+            titulo="Item 2.2.1: outras situações",
+            instrucao="O item 2.2.1 prevê que outras situações de vulnerabilidade extrema geradas por "
+            "situações inesperadas podem ser analisadas pela Comissão de Seleção da Proaes. O Anexo VI "
+            "tem o campo “Outros: Quais?” para indicar outros comprovantes.",
+            motivo="Você informou uma situação diferente das alíneas do item 2.2. A Ponte não avalia "
+            "esse enquadramento.",
+            fontes=("2.2.1", "anexo-vi.outros"),
+            depende_de=("situacao_emergencial",),
+        ),
+        Orientacao(
+            chave="proaes.situacao-excepcional",
+            tipo=Tipo.PERGUNTA_PROAES,
+            titulo="Pergunte se sua situação pode ser analisada pelo item 2.2.1",
+            instrucao="Pergunta sugerida: “Minha situação não está nas alíneas do item 2.2. Ela pode ser "
+            "analisada pelo item 2.2.1? Quais comprovantes devo anexar ao Anexo VI?”",
+            motivo="Só a Comissão de Seleção da Proaes pode analisar situações excepcionais.",
+            fontes=("2.2.1", "anexo-vi.outros"),
+            depende_de=("situacao_emergencial",),
+        ),
+    ]
 
 
 def _item_6_9_geral(situacao: Situacao) -> Orientacao:
@@ -499,6 +730,187 @@ def _item_6_10(caso: Caso) -> list[Orientacao]:
             fontes=("6.10",),
         )
     ]
+
+
+PENDENCIA_RENDA = (
+    "O item 6.10 prevê outra forma de documentação de renda para quem recebeu bolsas ou auxílios "
+    "nos últimos 3 anos, e o item 6.9 trata de quem perdeu documentos. A Ponte não avaliou qual "
+    "documentação se aplica a você nem quais membros do grupo familiar devem apresentá-la."
+)
+
+
+def _declaracoes_dos_anexos(caso: Caso) -> list[Orientacao]:
+    return [*_anexo_iv(caso), *_anexo_v(caso), *_declaracoes_de_renda(caso)]
+
+
+def _anexo_iv(caso: Caso) -> list[Orientacao]:
+    instrucao = (
+        "O item 8.2 pede do estudante a declaração de que não possui matrícula em outra instituição "
+        "de ensino superior nem diploma de nível superior, com data atualizada, preenchida e "
+        "assinada (Anexo IV)."
+    )
+    outra_graduacao = caso.valor("outra_graduacao")
+    if outra_graduacao == "nao":
+        return [
+            Orientacao(
+                chave="8.2.anexo-iv",
+                tipo=Tipo.PASSO,
+                titulo="Preencha a declaração do Anexo IV",
+                instrucao=instrucao,
+                motivo="Você informou que não tem matrícula em outra instituição de ensino superior nem "
+                "diploma de nível superior.",
+                fontes=("8.2", "anexo-iv.declaracao"),
+                depende_de=("outra_graduacao",),
+            )
+        ]
+    if outra_graduacao == "sim":
+        return [
+            Orientacao(
+                chave="8.2.anexo-iv",
+                tipo=Tipo.NAO_AVALIADO,
+                titulo="Itens 4.2 e 4.3: primeira graduação",
+                instrucao="Os itens 4.2 e 4.3 pedem que o estudante esteja cursando a primeira graduação "
+                "e não esteja cursando outra graduação em instituição de ensino superior. No Anexo IV, o "
+                "estudante declara não ter vínculo com outra instituição nem diploma de nível superior.",
+                motivo="Você informou ter matrícula em outra instituição ou diploma de nível superior. A "
+                "Ponte não avalia como isso afeta o pedido.",
+                fontes=("4.2", "4.3", "anexo-iv.declaracao"),
+                depende_de=("outra_graduacao",),
+            )
+        ]
+    return [
+        Orientacao(
+            chave="8.2.anexo-iv",
+            tipo=Tipo.REFERENCIA,
+            titulo="Item 8.2: declaração do Anexo IV",
+            instrucao=instrucao,
+            motivo="Responda à pergunta sobre outra graduação para relacionar este item às suas informações.",
+            fontes=("8.2", "anexo-iv.declaracao"),
+            depende_de=("outra_graduacao",),
+        )
+    ]
+
+
+def _anexo_v(caso: Caso) -> list[Orientacao]:
+    pensao = caso.valor("pensao_alimenticia")
+    fontes = ("8.5.7.b", "anexo-v.opcoes")
+    if pensao == "sim":
+        return [
+            Orientacao(
+                chave="8.5.7.anexo-v",
+                tipo=Tipo.PASSO,
+                titulo="Preencha a declaração de pensão alimentícia (Anexo V) na opção “Recebo”",
+                instrucao="O item 8.5.7 pede, para quem recebe pensão alimentícia, termo de audiência ou "
+                "declaração assinada com o valor da pensão, além da declaração do Anexo V. No Anexo V, a "
+                "opção “Recebo” pede o valor mensal.",
+                motivo="Você informou que você ou alguém do seu grupo familiar recebe pensão alimentícia.",
+                fontes=fontes,
+                depende_de=("pensao_alimenticia",),
+                pendencia=PENDENCIA_RENDA,
+            )
+        ]
+    if pensao == "nao":
+        return [
+            Orientacao(
+                chave="8.5.7.anexo-v",
+                tipo=Tipo.PASSO,
+                titulo="Preencha a declaração de pensão alimentícia (Anexo V) na opção “Não recebo”",
+                instrucao="O item 8.5.7 pede a declaração do Anexo V também de quem não recebe pensão "
+                "alimentícia. O formulário tem a opção “Não recebo”.",
+                motivo="Você informou que ninguém do seu grupo familiar recebe pensão alimentícia.",
+                fontes=fontes,
+                depende_de=("pensao_alimenticia",),
+                pendencia=PENDENCIA_RENDA,
+            )
+        ]
+    return [
+        Orientacao(
+            chave="8.5.7.anexo-v",
+            tipo=Tipo.REFERENCIA,
+            titulo="Item 8.5.7: declaração de pensão alimentícia (Anexo V)",
+            instrucao="O item 8.5.7 pede a declaração do Anexo V de quem recebe ou não pensão alimentícia.",
+            motivo="Responda à pergunta sobre pensão alimentícia para relacionar este item às suas informações.",
+            fontes=fontes,
+            depende_de=("pensao_alimenticia",),
+        )
+    ]
+
+
+def _declaracoes_de_renda(caso: Caso) -> list[Orientacao]:
+    orientacoes = []
+    if caso.valor("desemprego_no_grupo") == "sim":
+        orientacoes.append(
+            Orientacao(
+                chave="8.5.5.anexo-ii",
+                tipo=Tipo.PASSO,
+                titulo="Preencha a declaração de desemprego (Anexo II)",
+                instrucao="O item 8.5.5 pede, em caso de desemprego, a declaração do Anexo II com data "
+                "atualizada e assinatura por extenso e manuscrita. No formulário, a pessoa informa de "
+                "onde vem o seu sustento. Confira no edital as demais alíneas do item 8.5.5.",
+                motivo="Você informou que você ou alguém do seu grupo familiar maior de 18 anos está "
+                "desempregado.",
+                fontes=("8.5", "8.5.5", "anexo-ii.declaracao"),
+                depende_de=("desemprego_no_grupo",),
+                pendencia=PENDENCIA_RENDA,
+            )
+        )
+    if caso.valor("autonomo_no_grupo") == "sim":
+        orientacoes.append(
+            Orientacao(
+                chave="8.5.4.anexo-iii",
+                tipo=Tipo.PASSO,
+                titulo="Preencha a declaração de renda para autônomos e/ou informais (Anexo III)",
+                instrucao="O item 8.5.4 pede a declaração do Anexo III com data atualizada, atividade "
+                "exercida e renda média mensal, com assinatura por extenso e manuscrita. O próprio Anexo "
+                "III avisa que declarações sem esses dados ou sem assinatura não serão aceitas. Confira "
+                "no edital as demais alíneas do item 8.5.4.",
+                motivo="Você informou que você ou alguém do seu grupo familiar maior de 18 anos trabalha "
+                "como autônomo ou informal.",
+                fontes=("8.5", "8.5.4", "anexo-iii.observacao"),
+                depende_de=("autonomo_no_grupo",),
+                pendencia=PENDENCIA_RENDA,
+            )
+        )
+    if caso.valor("bolsa_familia") == "sim":
+        orientacoes.append(
+            Orientacao(
+                chave="8.5.1.anexo-viii",
+                tipo=Tipo.PASSO,
+                titulo="Reúna a documentação do Bolsa Família (Anexo VIII)",
+                instrucao="O item 8.5.1 pede a Folha Resumo do Cadastro Único atualizada, o último "
+                "extrato de recebimento do benefício e a declaração do Anexo VIII, que substitui as "
+                "outras documentações de renda. O item 8.5.1.1 pede que você faça parte do grupo "
+                "familiar da Folha Resumo.",
+                motivo="Você informou que seu grupo familiar recebe Bolsa Família.",
+                fontes=("8.5.1", "8.5.1.1", "anexo-viii.declaracao"),
+                depende_de=("bolsa_familia",),
+                pendencia="No Anexo VIII, a pessoa declara que o Bolsa Família é a principal fonte de "
+                "renda do grupo familiar. A Ponte não avalia se essa declaração corresponde à sua "
+                "situação. " + PENDENCIA_RENDA,
+            )
+        )
+    sem_resposta = tuple(
+        chave
+        for chave in ("desemprego_no_grupo", "autonomo_no_grupo", "bolsa_familia")
+        if caso.valor(chave) is None
+    )
+    if sem_resposta:
+        orientacoes.append(
+            Orientacao(
+                chave="8.5.declaracoes",
+                tipo=Tipo.REFERENCIA,
+                titulo="Item 8.5: declarações de renda dos anexos",
+                instrucao="O item 8.5 trata da documentação de renda do estudante e dos membros do grupo "
+                "familiar maiores de 18 anos. Os anexos incluem a declaração de desemprego (Anexo II), a "
+                "de renda para autônomos e/ou informais (Anexo III) e a de beneficiário do Bolsa Família "
+                "(Anexo VIII).",
+                motivo="Responda às perguntas sobre trabalho e Bolsa Família para relacionar essas "
+                "declarações às suas informações.",
+                fontes=("8.5", "8.5.5", "8.5.4", "8.5.1"),
+                depende_de=sem_resposta,
+            )
+        )
+    return orientacoes
 
 
 def _fora_do_recorte(situacao: Situacao) -> list[Orientacao]:

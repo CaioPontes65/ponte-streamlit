@@ -11,15 +11,20 @@ from ponte.extracao import FalhaNaExtracao, Extracao, extrair
 from ponte.fatos import (
     CAMPOS,
     NAO_SEI,
+    SECAO_EVENTO_ADVERSO,
+    SECAO_FALECIMENTO,
+    SECAO_INGRESSANTE,
+    Campo,
     Caso,
     Estado,
     Fato,
+    Origem,
     descrever_valor,
     versao_do_relato,
 )
 from ponte.fontes import EDITAL_01_2026 as EDITAL
 from ponte.mudancas import comparar, descrever
-from ponte.regras import LIMITE, Tipo, gerar_plano
+from ponte.regras import LIMITE, Tipo, campos_sem_resposta, gerar_plano, secoes_de_outras_situacoes
 from ponte.resumo import gerar_resumo
 
 APP_DIR = Path(__file__).resolve().parent
@@ -130,7 +135,9 @@ def pagina_contexto() -> None:
         st.markdown("**Edital Proaes nº 01/2026 · Auxílio Emergencial**")
         st.write(f"Universidade Federal do Acre · Processo {EDITAL.processo}")
         st.write(
-            "Cobertura parcial: saída da própria residência por evento adverso e perda de documentos pessoais."
+            "Cobertura parcial: saída da própria residência por evento adverso e perda de documentos pessoais, "
+            "com indicação do Anexo VI para as demais situações do item 2.2 e das declarações dos Anexos II, "
+            "III, IV, V e VIII."
         )
         st.caption(
             "Outros requisitos não foram avaliados. A Ponte não confirma elegibilidade, autenticidade "
@@ -190,11 +197,15 @@ def pagina_situacao() -> None:
                 else:
                     try:
                         with st.spinner("Organizando sugestões para você conferir..."):
-                            st.session_state.extracao = extrair(
+                            extracao = extrair(
                                 relato,
                                 chave_gemma(),
                                 modelo=modelo_gemma(),
                             )
+                        if len(extracao.eventos) <= 1:
+                            aplicar_extracao(extracao, 0 if extracao.eventos else None)
+                        else:
+                            st.session_state.extracao = extracao
                         st.success("Análise concluída. Confira os fatos na próxima etapa.")
                         st.session_state.etapa = 2
                         st.rerun()
@@ -210,6 +221,18 @@ def pagina_situacao() -> None:
         formulario_perguntas()
 
 
+SECOES_CONDICIONAIS = (SECAO_FALECIMENTO, SECAO_EVENTO_ADVERSO, SECAO_INGRESSANTE)
+
+
+def titulo_de_secao(campo: Campo, secao_atual: str) -> str:
+    """Mostra o título quando o campo abre uma nova seção e devolve a seção corrente."""
+    if campo.secao != secao_atual:
+        st.markdown(f"##### {campo.secao}")
+        if campo.secao in SECOES_CONDICIONAIS:
+            st.caption("Responda somente se esta for a sua situação. Caso contrário, deixe sem resposta.")
+    return campo.secao
+
+
 def formulario_perguntas() -> None:
     caso: Caso = st.session_state.caso
     st.markdown(
@@ -217,8 +240,10 @@ def formulario_perguntas() -> None:
     )
     with st.form("perguntas_diretas"):
         valores: dict[str, object] = {}
+        secao_atual = ""
         for chave, campo in CAMPOS.items():
             fato = caso.fatos[chave]
+            secao_atual = titulo_de_secao(campo, secao_atual)
             if campo.tipo == "data":
                 choices = ["Sem resposta", "Não sei", "Informar data"]
                 if fato.estado in (Estado.NAO_SEI,):
@@ -293,6 +318,45 @@ def _valor_para_widget(chave: str, fato: Fato) -> object:
     return fato.valor
 
 
+def aplicar_extracao(extracao: Extracao, indice_do_evento: int | None) -> None:
+    st.session_state.caso = st.session_state.caso.aplicar_sugestoes(
+        extracao.sugestoes(indice_do_evento),
+        versao_do_relato(st.session_state.relato),
+    )
+    st.session_state.extracao = None
+    # Sem isso, os campos da conferência manteriam os valores de uma análise anterior.
+    for chave in [chave for chave in st.session_state if str(chave).startswith("review_")]:
+        del st.session_state[chave]
+
+
+def mostrar_pendencias(caso: Caso, faltando: list[str]) -> None:
+    do_relato = [
+        chave
+        for chave, fato in caso.fatos.items()
+        if fato.origem is Origem.RELATO and fato.estado is not Estado.SEM_RESPOSTA
+    ]
+    a_corrigir = [chave for chave, fato in caso.fatos.items() if fato.estado is Estado.PRECISA_ESCLARECER]
+    if do_relato:
+        st.success(
+            f"O Gemma preencheu {len(do_relato)} campo(s) com base no relato. Confira cada um antes de salvar."
+        )
+    if a_corrigir:
+        st.warning("Precisam de correção: " + ", ".join(CAMPOS[chave].rotulo for chave in a_corrigir) + ".")
+    if not faltando:
+        st.info("Todas as perguntas da sua situação têm resposta.")
+        return
+    with st.container(border=True):
+        st.markdown(f"**Faltou responder ({len(faltando)})**")
+        origem = "O relato não trouxe estas informações." if do_relato else "Estas perguntas estão sem resposta."
+        st.caption(f"{origem} Responda abaixo as que souber; as demais podem ficar sem resposta.")
+        st.markdown("\n".join(f"- {CAMPOS[chave].pergunta}" for chave in faltando))
+    if secoes_de_outras_situacoes(caso):
+        st.caption(
+            "Perguntas de outras situações emergenciais ficam ocultas. Se mudar a situação, salve e volte "
+            "a esta etapa para ver as perguntas correspondentes."
+        )
+
+
 def formulario_conferencia() -> None:
     caso: Caso = st.session_state.caso
     extracao: Extracao | None = st.session_state.extracao
@@ -317,26 +381,30 @@ def formulario_conferencia() -> None:
             st.info("Não foi possível identificar um acontecimento. Confira as informações gerais sugeridas.")
             sugestoes = extracao.sugestoes(None)
         if st.button("Aplicar sugestões para conferir", type="primary"):
-            st.session_state.caso = caso.aplicar_sugestoes(
-                sugestoes,
-                versao_do_relato(st.session_state.relato),
-            )
-            st.session_state.extracao = None
+            aplicar_extracao(extracao, indice if extracao.eventos else None)
             st.rerun()
+        return
 
     caso = st.session_state.caso
     st.markdown("Revise as informações. Sugestões do relato ainda não estão confirmadas.")
     if caso.versao_relato and st.session_state.relato:
         st.caption("O relato permanece nesta sessão para permitir conferência dos trechos. Ele não é salvo em histórico.")
+    faltando = campos_sem_resposta(caso)
+    mostrar_pendencias(caso, faltando)
+    ocultas = secoes_de_outras_situacoes(caso)
 
     with st.form("revisar_fatos"):
         valores: dict[str, object] = {}
+        secao_atual = ""
         for chave, campo in CAMPOS.items():
             fato = caso.fatos[chave]
-            if fato.estado is Estado.SEM_RESPOSTA and campo.so_do_relato:
+            if fato.estado is Estado.SEM_RESPOSTA and (campo.so_do_relato or campo.secao in ocultas):
                 continue
+            secao_atual = titulo_de_secao(campo, secao_atual)
             with st.container(border=True):
                 st.markdown(f"**{campo.pergunta}**")
+                if chave in faltando:
+                    st.markdown(":orange[**Faltou responder.** Responda se souber.]")
                 if fato.trecho:
                     st.caption(f'Trecho do relato: “{fato.trecho}”')
                 if fato.nota:
