@@ -5,6 +5,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import streamlit as st
+from catalogo import pagina_catalogo
 
 from ponte.extracao import FalhaNaExtracao, Extracao, extrair
 from ponte.fatos import (
@@ -488,7 +489,13 @@ def rodape_privacidade() -> None:
 
 def main() -> None:
     inicializar_estado()
+    st.session_state.setdefault("visao", "Buscar editais")
     titulo()
+    st.radio("Navegação", ["Buscar editais", "Preparar edital UFAC 01/2026"], key="visao", horizontal=True, label_visibility="collapsed")
+    if st.session_state.visao == "Buscar editais":
+        pagina_catalogo()
+        rodape_privacidade()
+        return
     cabecalho_etapas()
     etapa = st.session_state.etapa
     if etapa == 0:
@@ -500,19 +507,20 @@ def main() -> None:
     else:
         pagina_resultado()
 
-    if etapa > 0:
-        cols = st.columns([1, 1, 4])
-        with cols[0]:
-            if st.button("Voltar etapa", disabled=etapa == 0):
-                st.session_state.etapa = max(0, etapa - 1)
-                st.rerun()
-        with cols[1]:
-            st.button("Apagar sessão", on_click=apagar_sessao)
+    cols = st.columns([1, 1, 4])
+    with cols[0]:
+        if st.button("Voltar etapa", disabled=etapa == 0):
+            st.session_state.etapa = max(0, etapa - 1)
+            st.rerun()
+    with cols[1]:
+        st.button("Apagar sessão", on_click=apagar_sessao)
     rodape_privacidade()
 
 
 if __name__ == "__main__":
     main()
+
+
 
 
 

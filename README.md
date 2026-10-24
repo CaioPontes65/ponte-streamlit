@@ -1,17 +1,18 @@
 # Ponte — versão Streamlit
 
-Esta pasta contém uma adaptação Streamlit do fluxo guiado da Ponte para o Edital Proaes nº 01/2026 da UFAC. Ela reaproveita os módulos Python de fatos, regras, fontes, extração Gemma e resumo do repositório original.
+Esta pasta contém uma adaptação Streamlit do catálogo e do fluxo guiado da Ponte para o Edital Proaes nº 01/2026 da UFAC. Ela reaproveita os módulos Python de fatos, regras, fontes, extração Gemma e resumo do repositório original.
 
 ## O que foi convertido
 
-- Fluxo em quatro etapas: contexto do edital, entrada de situação, conferência e próximos passos.
+- Busca de editais com pesquisa textual, filtros por UF, área e situação, e selo de orientação guiada.
+- Fluxo guiado em quatro etapas para o Edital Proaes nº 01/2026 da UFAC.
 - Entrada por relato com chamada real ao Gemma 4 pela Gemini API.
 - Alternativa por perguntas diretas quando não houver chave ou quando a API falhar.
 - Sugestões com trechos de origem, confirmação e edição de fatos.
 - Recalculo das orientações após alterações e resumo copiável/baixável.
 - Trechos e links das fontes oficiais do edital.
 
-Esta versão mantém o escopo do MVP revisado. Não inclui o catálogo de exemplos fictícios nem as perguntas genéricas simuladas do protótipo React, porque elas não são regras revisadas de editais reais. Não inclui SQLite, login, upload de documentos, OCR ou histórico.
+O catálogo segue o PonteFront: há 1 edital com fonte oficial vinculada e 17 registros fictícios rotulados como demonstração. Só o edital oficial possui fluxo guiado. A preparação genérica simulada do React não foi portada como recomendação nesta versão, pois não está ancorada em editais oficiais verificados. Não inclui SQLite, login, upload de documentos, OCR ou histórico.
 
 ## Executar localmente
 
@@ -32,7 +33,7 @@ A aplicação não tem banco de casos, cadastro ou upload. As respostas e o rela
 
 Quando a pessoa escolhe Analisar relato com Gemma, o texto é enviado à Gemini API. A cota gratuita da API tem termos que permitem uso do conteúdo para melhoria dos serviços e revisão humana. Por isso, esta versão orienta usar somente dados fictícios na demonstração e não afirma que nenhum dado é processado ou recebido por fornecedores. A chave não é enviada ao navegador pelo código da aplicação.
 
-A aplicação não salva relatos em arquivos, SQLite ou logs próprios. Isso não constitui uma auditoria dos logs ou políticas do provedor de hospedagem e da Gemini API.
+A aplicação não persiste relatos em arquivos, SQLite ou logs próprios. No Streamlit, valores de formulário ficam em memória de sessão no servidor enquanto a sessão está ativa; isso não equivale a processamento exclusivamente no navegador nem permite afirmar que não há logs de infraestrutura. A rota Gemini recebe o relato quando a pessoa aciona a análise.
 
 ## Limites do produto
 
@@ -43,4 +44,7 @@ A Ponte relaciona fatos informados pela pessoa a um recorte revisado do edital. 
 Para Streamlit Community Cloud, publique esta pasta em um repositório GitHub e selecione streamlit_app.py como arquivo principal. Configure GEMINI_API_KEY nos secrets do app. A pasta SQLite foi deixada de fora conforme o escopo atual; esta versão não persiste formulários gerados nem respostas.
 
 Arquivos do edital incluídos em fontes/ufac-proaes-01-2026/ são cópias de documentos públicos citados pelo código-fonte original. A licença MIT da aplicação não altera os direitos ou termos dos documentos e do modelo.
+
+
+
 
